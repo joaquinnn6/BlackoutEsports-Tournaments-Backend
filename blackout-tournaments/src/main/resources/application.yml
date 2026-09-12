@@ -1,0 +1,19 @@
+server:
+  port: ${SERVER_PORT:8082}
+spring:
+  application:
+    name: blackout-tournaments
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5434}/${DB_NAME:tournaments_db}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+app:
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:3001}
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
