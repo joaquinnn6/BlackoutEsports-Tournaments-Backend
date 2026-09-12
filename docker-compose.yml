@@ -1,0 +1,35 @@
+services:
+  tournaments-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-tournaments_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "127.0.0.1:${DB_PORT:-5434}:5432"
+    volumes:
+      - tournaments_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  tournaments-service:
+    build: ./blackout-tournaments
+    restart: unless-stopped
+    ports:
+      - "${SERVER_PORT:-8082}:8082"
+    environment:
+      SERVER_PORT: 8082
+      DB_HOST: tournaments-db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-tournaments_db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:3001}
+    depends_on:
+      tournaments-db:
+        condition: service_healthy
+volumes:
+  tournaments_db_data:
