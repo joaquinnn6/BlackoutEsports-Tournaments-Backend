@@ -1,7 +1,7 @@
 name: Verify tournaments service
 on:
   push:
-    branches: [main, develop, feature-tournaments]
+    branches: [main, develop, "feature-*"]
   pull_request:
 permissions:
   contents: read
