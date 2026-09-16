@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -16,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(TestTokens.class)
 class TournamentApiTests {
     @Autowired MockMvc mvc;
     @Autowired TournamentRepository repository;
@@ -28,53 +30,70 @@ class TournamentApiTests {
     }
 
     private long createTournament(String name) throws Exception {
-        String response = mvc.perform(post("/api/tournaments").contentType(MediaType.APPLICATION_JSON).content(body(name)))
+        String response = mvc.perform(post("/api/tournaments").header("Authorization", bearer(TestTokens.admin()))
+                        .contentType(MediaType.APPLICATION_JSON).content(body(name)))
                 .andExpect(status().isCreated()).andExpect(header().string("Location", startsWith("/api/tournaments/")))
                 .andReturn().getResponse().getContentAsString();
         return mapper.readTree(response).get("id").asLong();
     }
 
     @Test void crudPersistsChangesAndDeletes() throws Exception {
-        mvc.perform(get("/api/tournaments")).andExpect(status().isOk()).andExpect(content().json("[]"));
+        mvc.perform(get("/api/tournaments").header("Authorization", bearer(TestTokens.fan())))
+                .andExpect(status().isOk()).andExpect(content().json("[]"));
         long id = createTournament("OpsLeague");
-        mvc.perform(get("/api/tournaments/" + id)).andExpect(status().isOk()).andExpect(jsonPath("$.name").value("OpsLeague"));
-        mvc.perform(put("/api/tournaments/" + id).contentType(MediaType.APPLICATION_JSON).content(body("Finals")))
+        mvc.perform(get("/api/tournaments/" + id).header("Authorization", bearer(TestTokens.fan())))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.name").value("OpsLeague"));
+        mvc.perform(put("/api/tournaments/" + id).header("Authorization", bearer(TestTokens.staff()))
+                        .contentType(MediaType.APPLICATION_JSON).content(body("Finals")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.name").value("Finals"));
-        mvc.perform(get("/api/tournaments")).andExpect(jsonPath("$[0].name").value("Finals")).andExpect(jsonPath("$", hasSize(1)));
-        mvc.perform(delete("/api/tournaments/" + id)).andExpect(status().isNoContent());
-        mvc.perform(get("/api/tournaments/" + id)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/tournaments").header("Authorization", bearer(TestTokens.fan())))
+                .andExpect(jsonPath("$[0].name").value("Finals")).andExpect(jsonPath("$", hasSize(1)));
+        mvc.perform(delete("/api/tournaments/" + id).header("Authorization", bearer(TestTokens.admin())))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/tournaments/" + id).header("Authorization", bearer(TestTokens.fan())))
+                .andExpect(status().isNotFound());
     }
 
     @Test void rejectsMissingBlankAndOversizedFields() throws Exception {
-        mvc.perform(post("/api/tournaments").contentType(MediaType.APPLICATION_JSON).content("{}"))
+        mvc.perform(post("/api/tournaments").header("Authorization", bearer(TestTokens.admin()))
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors.game").exists());
-        mvc.perform(post("/api/tournaments").contentType(MediaType.APPLICATION_JSON).content(body("  ")))
+        mvc.perform(post("/api/tournaments").header("Authorization", bearer(TestTokens.admin()))
+                        .contentType(MediaType.APPLICATION_JSON).content(body("  ")))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors.name").exists());
-        mvc.perform(post("/api/tournaments").contentType(MediaType.APPLICATION_JSON).content(body("x".repeat(121))))
+        mvc.perform(post("/api/tournaments").header("Authorization", bearer(TestTokens.admin()))
+                        .contentType(MediaType.APPLICATION_JSON).content(body("x".repeat(121))))
                 .andExpect(status().isBadRequest());
     }
 
     @Test void rejectsDuplicatesIncludingCaseAndSpaces() throws Exception {
         long first = createTournament("OpsLeague");
         long second = createTournament("Finals");
-        mvc.perform(post("/api/tournaments").contentType(MediaType.APPLICATION_JSON).content(body(" opsleague ")))
+        mvc.perform(post("/api/tournaments").header("Authorization", bearer(TestTokens.admin()))
+                        .contentType(MediaType.APPLICATION_JSON).content(body(" opsleague ")))
                 .andExpect(status().isConflict());
-        mvc.perform(put("/api/tournaments/" + second).contentType(MediaType.APPLICATION_JSON).content(body("OpsLeague")))
+        mvc.perform(put("/api/tournaments/" + second).header("Authorization", bearer(TestTokens.admin()))
+                        .contentType(MediaType.APPLICATION_JSON).content(body("OpsLeague")))
                 .andExpect(status().isConflict());
-        mvc.perform(put("/api/tournaments/" + first).contentType(MediaType.APPLICATION_JSON).content(body("OpsLeague")))
+        mvc.perform(put("/api/tournaments/" + first).header("Authorization", bearer(TestTokens.admin()))
+                        .contentType(MediaType.APPLICATION_JSON).content(body("OpsLeague")))
                 .andExpect(status().isOk());
     }
 
     @Test void missingUpdateAndDeleteReturn404() throws Exception {
-        mvc.perform(put("/api/tournaments/9999").contentType(MediaType.APPLICATION_JSON).content(body("Missing")))
+        mvc.perform(put("/api/tournaments/9999").header("Authorization", bearer(TestTokens.admin()))
+                        .contentType(MediaType.APPLICATION_JSON).content(body("Missing")))
                 .andExpect(status().isNotFound());
-        mvc.perform(delete("/api/tournaments/9999")).andExpect(status().isNotFound());
+        mvc.perform(delete("/api/tournaments/9999").header("Authorization", bearer(TestTokens.admin())))
+                .andExpect(status().isNotFound());
     }
 
     @Test void malformedJsonAndIdsReturn400() throws Exception {
-        mvc.perform(post("/api/tournaments").contentType(MediaType.APPLICATION_JSON).content("{"))
+        mvc.perform(post("/api/tournaments").header("Authorization", bearer(TestTokens.admin()))
+                        .contentType(MediaType.APPLICATION_JSON).content("{"))
                 .andExpect(status().isBadRequest());
-        mvc.perform(get("/api/tournaments/abc")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/tournaments/abc").header("Authorization", bearer(TestTokens.fan())))
+                .andExpect(status().isBadRequest());
     }
 
     @Test void corsAllowsAdminOriginAndRejectsUnknownOrigin() throws Exception {
@@ -89,5 +108,21 @@ class TournamentApiTests {
         mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/api/tournaments'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/tournaments/{id}'].delete").exists());
+    }
+
+    @Test void exigeTokenYRestringeEscritura() throws Exception {
+        mvc.perform(get("/api/tournaments")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/tournaments").header("Authorization", "Bearer incorrecto"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/tournaments").header("Authorization", bearer(TestTokens.fan()))
+                        .contentType(MediaType.APPLICATION_JSON).content(body("Solo lectura")))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/tournaments").header("Authorization", bearer(TestTokens.entraSinRol()))
+                        .contentType(MediaType.APPLICATION_JSON).content(body("Sin rol")))
+                .andExpect(status().isForbidden());
+    }
+
+    private static String bearer(String token) {
+        return "Bearer " + token;
     }
 }
