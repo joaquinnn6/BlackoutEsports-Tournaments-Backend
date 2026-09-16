@@ -14,6 +14,12 @@ spring:
 app:
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:3001}
+  security:
+    entra-issuer: ${ENTRA_ISSUER:}
+    entra-audience: ${ENTRA_AUDIENCE:}
+    entra-scope: ${ENTRA_SCOPE:access_as_user}
+    cognito-issuer: ${COGNITO_ISSUER:}
+    cognito-client-id: ${COGNITO_CLIENT_ID:}
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
