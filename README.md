@@ -8,11 +8,12 @@ Sigue la estructura del servicio de jugadores y utiliza puertos y almacenamiento
 
 - `main`: base del repositorio.
 - `develop`: base para integrar cambios revisados.
-- `feature-tournaments`: implementación del CRUD y pruebas, pendiente de integración.
+- `feature-tournaments`: implementación original del CRUD.
+- `feature-seguridad-jwt`: autenticación JWT y permisos de Entra/Cognito.
 
 ## Ejecutar
 
-Selecciona la rama `feature-tournaments`. Desde la raíz del repositorio:
+Selecciona la rama `feature-seguridad-jwt`. Desde la raíz del repositorio:
 
 ```sh
 docker compose up --build
@@ -21,6 +22,8 @@ docker compose up --build
 API: http://localhost:8082/api/tournaments
 
 Swagger: http://localhost:8082/swagger-ui.html
+
+Pulsa **Authorize** e ingresa un Access Token válido antes de probar los endpoints.
 
 PostgreSQL: `localhost:5434`, base `tournaments_db`. Los datos se conservan en un volumen Docker.
 El servicio de jugadores puede seguir usando `8081` y `5433`.
@@ -43,6 +46,17 @@ Las variables del archivo `.env` son leídas por Compose; para Maven deben expor
 | POST | `/api/tournaments` | Crear torneo, 201 y cabecera Location |
 | PUT | `/api/tournaments/{id}` | Actualizar todos los campos, 200 o 404 |
 | DELETE | `/api/tournaments/{id}` | Eliminar torneo, 204 o 404 |
+
+Todos los `GET` requieren un Access Token válido de Entra ID o Cognito. `POST`, `PUT` y `DELETE`
+requieren un token de Entra con rol de aplicación `Admin` o `Staff`; un fan de Cognito es de solo lectura.
+
+El backend valida firma, emisor, vencimiento y sujeto. Entra además debe incluir la audiencia configurada,
+el scope `access_as_user` y el rol necesario para escritura. Cognito debe incluir `token_use=access` y el
+`client_id` configurado. Un token de Microsoft Graph no se acepta como token de esta API.
+
+Configura `ENTRA_ISSUER`, `ENTRA_AUDIENCE`, `ENTRA_SCOPE`, `COGNITO_ISSUER` y `COGNITO_CLIENT_ID`
+en `.env`; `.env.example` contiene el formato esperado. El frontend administrativo debe solicitar el scope
+propio `api://<id-aplicacion-api>/access_as_user`, separado de cualquier scope de Microsoft Graph.
 
 Ejemplo para POST o PUT:
 
@@ -73,16 +87,14 @@ Dentro de `blackout-tournaments/`:
 mvn clean verify
 ```
 
-Las pruebas usan H2 en modo PostgreSQL y cubren CRUD, validación, duplicados,
-errores 400/404, CORS y documentación OpenAPI. El build Docker también ejecuta las pruebas.
+Las pruebas usan H2 en modo PostgreSQL y tokens RSA locales. Cubren CRUD, validación, duplicados,
+errores 400/401/403/404, roles, firma, emisor, audiencia, scope, vencimiento, claims de Cognito,
+CORS y documentación OpenAPI. El build Docker también ejecuta las pruebas.
 H2 no reemplaza la comprobación de despliegue con PostgreSQL real.
 
 ## Alcance
 
 Este repositorio contiene el CRUD de torneos. El frontend y el backend de jugadores no se modifican.
-La conexión del panel administrativo queda pendiente. CORS admite por defecto los orígenes locales
-5173, 3000 y 3001, personalizables con `CORS_ORIGINS`.
-
-Al igual que el backend de jugadores actual, esta versión todavía no valida Access Tokens de Entra ID:
-sus endpoints no exigen autenticación. La validación JWT, roles, BFF, API Gateway y despliegue en EC2
-son trabajo pendiente para cumplir el encargo académico; este CRUD por sí solo no completa esa entrega.
+La conexión del panel administrativo se realiza enviando `Authorization: Bearer <access_token>`.
+CORS admite por defecto los orígenes locales 5173, 3000 y 3001, personalizables con `CORS_ORIGINS`.
+API Gateway y el despliegue en AWS siguen siendo pasos de infraestructura posteriores.
