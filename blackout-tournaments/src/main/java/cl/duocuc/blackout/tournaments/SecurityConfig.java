@@ -50,7 +50,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tournaments", "/api/tournaments/**")
-                            .hasAnyRole("Fan", "Admin", "Staff")
+                            .permitAll()
                         .requestMatchers("/api/tournaments", "/api/tournaments/**").hasAnyRole("Admin", "Staff")
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt ->

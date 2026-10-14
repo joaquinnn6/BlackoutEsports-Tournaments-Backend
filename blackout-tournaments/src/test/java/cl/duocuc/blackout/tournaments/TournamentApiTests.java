@@ -110,9 +110,11 @@ class TournamentApiTests {
                 .andExpect(jsonPath("$.paths['/api/tournaments/{id}'].delete").exists());
     }
 
-    @Test void exigeTokenYRestringeEscritura() throws Exception {
-        mvc.perform(get("/api/tournaments")).andExpect(status().isUnauthorized());
+    @Test void permiteLecturaPublicaYRestringeEscritura() throws Exception {
+        mvc.perform(get("/api/tournaments")).andExpect(status().isOk());
         mvc.perform(get("/api/tournaments").header("Authorization", "Bearer incorrecto"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/tournaments").contentType(MediaType.APPLICATION_JSON).content(body("Sin token")))
                 .andExpect(status().isUnauthorized());
         mvc.perform(post("/api/tournaments").header("Authorization", bearer(TestTokens.fan()))
                         .contentType(MediaType.APPLICATION_JSON).content(body("Solo lectura")))
