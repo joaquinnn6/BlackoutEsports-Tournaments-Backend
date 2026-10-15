@@ -2,6 +2,7 @@ package cl.duocuc.blackout.tournaments;
 
 import java.util.List;
 import java.util.Locale;
+import cl.duocuc.blackout.tournaments.messaging.TournamentEventPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -14,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional(readOnly = true)
 public class TournamentService {
     private final TournamentRepository repository;
+    private final TournamentEventPublisher eventPublisher;
 
     public List<TournamentResponse> findAll() {
         return repository.findAll(Sort.by("id")).stream().map(TournamentResponse::from).toList();
@@ -28,7 +30,9 @@ public class TournamentService {
         checkDuplicate(request, null);
         Tournament tournament = new Tournament();
         apply(tournament, request);
-        return TournamentResponse.from(repository.saveAndFlush(tournament));
+        TournamentResponse created = TournamentResponse.from(repository.saveAndFlush(tournament));
+        eventPublisher.tournamentCreated(created);
+        return created;
     }
 
     @Transactional
