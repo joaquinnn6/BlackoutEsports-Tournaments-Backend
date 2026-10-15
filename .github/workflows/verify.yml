@@ -19,3 +19,5 @@ jobs:
         run: mvn -B -ntp -f blackout-tournaments/pom.xml clean verify
       - name: Validate Compose
         run: docker compose config --quiet
+        env:
+          RABBITMQ_PASSWORD: ci-only-password
