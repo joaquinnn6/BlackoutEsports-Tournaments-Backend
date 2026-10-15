@@ -4,6 +4,21 @@ Microservicio CRUD independiente para torneos. Java 21, Spring Boot 3.5, Maven,
 Spring Data JPA, PostgreSQL 16, validaciones, Swagger/OpenAPI y Docker.
 Sigue la estructura del servicio de jugadores y utiliza puertos y almacenamiento propios.
 
+## Mensajería RabbitMQ
+
+Al crear un torneo, el servicio guarda primero el registro y publica el evento
+`tournament.created` en el exchange `blackout.events.exchange`. La clave coincide con
+el binding `tournament.#` de `fan.notifications.queue`. Los nombres de exchanges,
+colas, bindings y routing keys están centralizados en `application.yml` y se cargan
+mediante `RabbitMessagingProperties`; no se utilizan literales dispersos en la lógica de negocio.
+
+La publicación está encapsulada en `TournamentEventPublisher`. Si el broker no está disponible,
+el CRUD conserva el torneo y registra el error para no alterar la operación principal. Para
+ejecutar pruebas sin RabbitMQ se configura `app.rabbit.enabled=false` en el perfil de pruebas.
+
+Antes de iniciar este Compose debe estar creada la red Docker `blackout-network` y en ejecución
+el contenedor `blackout-rabbitmq` del repositorio administrador de RabbitMQ.
+
 ## Ramas
 
 - `main`: base del repositorio.
