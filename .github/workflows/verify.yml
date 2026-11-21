@@ -21,3 +21,18 @@ jobs:
         run: docker compose config --quiet
         env:
           RABBITMQ_PASSWORD: ci-only-password
+
+      - name: Compilar administrador Kafka
+        run: mvn -B -ntp -f kafka-admin/pom.xml verify
+      - name: Levantar tres ZooKeeper y tres brokers
+        run: |
+          docker network create blackout-network
+          docker compose -f docker-compose.kafka.yml up -d --wait --wait-timeout 240 zk1 zk2 zk3 kafka1 kafka2 kafka3
+      - name: Probar flujo real entre ambos tópicos
+        run: mvn -B -ntp -f blackout-tournaments/pom.xml -Dtest=KafkaClusterTests -Dkafka.integration=true test
+      - name: Registrar estado del clúster
+        if: always()
+        run: docker compose -f docker-compose.kafka.yml logs --tail=30
+      - name: Detener clúster de pruebas
+        if: always()
+        run: docker compose -f docker-compose.kafka.yml down -v

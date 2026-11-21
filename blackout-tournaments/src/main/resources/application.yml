@@ -1,6 +1,22 @@
 server:
   port: ${SERVER_PORT:8082}
 spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+    listener:
+      ack-mode: record
+      concurrency: 3
   application:
     name: blackout-tournaments
   datasource:
@@ -17,6 +33,8 @@ spring:
     username: ${RABBITMQ_USER:blackout}
     password: ${RABBITMQ_PASSWORD:blackout-local}
 app:
+  kafka:
+    enabled: ${KAFKA_ENABLED:false}
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:3001}
   security:

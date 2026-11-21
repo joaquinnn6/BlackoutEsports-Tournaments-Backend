@@ -1,0 +1,14 @@
+server:
+  port: 8086
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka1:9092,kafka2:9092,kafka3:9092}
+app:
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+  security:
+    entra-issuer: ${ENTRA_ISSUER:}
+    entra-audience: ${ENTRA_AUDIENCE:}
+    entra-scope: ${ENTRA_SCOPE:PanelAdministrativo}
+    cognito-issuer: ${COGNITO_ISSUER:}
+    cognito-client-id: ${COGNITO_CLIENT_ID:}

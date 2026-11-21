@@ -49,6 +49,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                         .requestMatchers("/api/matches/manage").hasAnyRole("Admin", "Staff")
+                        .requestMatchers(HttpMethod.GET, "/api/matches", "/api/matches/statistics").permitAll()
+                        .requestMatchers("/api/matches/**", "/api/matches").hasAnyRole("Admin", "Staff")
                         .requestMatchers(HttpMethod.GET, "/api/tournaments", "/api/tournaments/**")
                             .permitAll()
                         .requestMatchers("/api/tournaments", "/api/tournaments/**").hasAnyRole("Admin", "Staff")
