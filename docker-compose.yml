@@ -22,6 +22,7 @@ services:
       - "${SERVER_PORT:-8082}:8082"
     environment:
       SERVER_PORT: 8082
+      SCOREBOARD_URL: http://scoreboard:8087
       KAFKA_ENABLED: ${KAFKA_ENABLED:-false}
       KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9092,kafka3:9092
       DB_HOST: tournaments-db
@@ -36,6 +37,7 @@ services:
       COGNITO_ISSUER: ${COGNITO_ISSUER}
       COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID}
       RABBITMQ_ENABLED: ${RABBITMQ_ENABLED:-true}
+      RABBITMQ_ADDRESSES: ${RABBITMQ_ADDRESSES:-blackout-rabbitmq:5672}
       RABBITMQ_HOST: ${RABBITMQ_HOST:-blackout-rabbitmq}
       RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
       RABBITMQ_USER: ${RABBITMQ_USER:-blackout}

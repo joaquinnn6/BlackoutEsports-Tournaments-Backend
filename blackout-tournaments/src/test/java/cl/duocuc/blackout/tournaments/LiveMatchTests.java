@@ -22,11 +22,10 @@ class LiveMatchTests {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
     @Autowired OutboxRepository outbox;
-    @Autowired ProjectionService projector;
-    @Autowired ProjectionRepository projections;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean ScoreboardClient projections;
     @Autowired MatchRepository matches;
 
-    @BeforeEach void clear() { outbox.deleteAll(); projections.deleteAll(); matches.deleteAll(); }
+    @BeforeEach void clear() { outbox.deleteAll(); matches.deleteAll(); org.mockito.Mockito.when(projections.read(false)).thenReturn(json.createArrayNode()); }
 
     @Test void rondaAnulacionDuplicadoYProyeccion() throws Exception {
         String admin="Bearer "+TestTokens.admin();
@@ -53,18 +52,12 @@ class LiveMatchTests {
         mvc.perform(get("/api/matches")).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
         var source=outbox.findAll();
         assertThat(source).hasSize(6);
-        for(var p:source) {
-            MatchEvent event=json.readValue(p.payload,MatchEvent.class);
-            projector.apply(event,"SCORE");
-            projector.apply(event,"SCORE");
-        }
-        assertThat(outbox.count()).isEqualTo(12);
-        projector.apply(json.readValue(source.getFirst().payload,MatchEvent.class),"SCORE");
-        mvc.perform(get("/api/matches")).andExpect(jsonPath("$[0].teamAScore").value(0))
-            .andExpect(jsonPath("$[0].teamBScore").value(1)).andExpect(jsonPath("$[0].winner").value("Phoenix"));
-        for(var p:outbox.findAll()) if(p.destination.equals(MatchService.SCORES))
-            projector.apply(json.readValue(p.payload,MatchEvent.class),"STAT");
-        mvc.perform(get("/api/matches/statistics")).andExpect(jsonPath("$[0].winner").value("Phoenix"));
+        MatchEvent last=json.readValue(source.getLast().payload,MatchEvent.class);
+        assertThat(last.status()).isEqualTo("FINISHED");
+        assertThat(last.rounds()).containsExactly("B");
+        assertThat(last.matchVersion()).isEqualTo(6);
+        assertThat(source).allMatch(p -> p.destination.equals(MatchService.EVENTS));
+
     }
 
     void command(String path,String token,String action,long version,int expected) throws Exception {

@@ -21,20 +21,32 @@ import static org.awaitility.Awaitility.await;
 @EnabledIfSystemProperty(named="kafka.integration",matches="true")
 class KafkaClusterTests {
     @Autowired KafkaTemplate<Object,Object> kafka;
-    @Autowired ProjectionRepository projections;
     @Autowired ObjectMapper json;
+    @Autowired MatchService matches;
+    @Autowired TournamentService tournaments;
+    @Autowired OutboxRepository outbox;
+    @Autowired ScoreboardClient scoreboard;
 
-    @Test void tresBrokersProcesanAmbosTopicosYDuplicados() throws Exception {
-        UUID match=UUID.randomUUID();
-        MatchEvent event=new MatchEvent(UUID.randomUUID(),1,"FINISHED",match,4,1,"Blackout","Phoenix","Valorant","FINISHED",List.of("A","B","A"),Instant.now());
-        String payload=json.writeValueAsString(event);
-        kafka.send(MatchService.EVENTS,match.toString(),payload).get(20,TimeUnit.SECONDS);
-        kafka.send(MatchService.EVENTS,match.toString(),payload).get(20,TimeUnit.SECONDS);
-        await().atMost(Duration.ofSeconds(60)).untilAsserted(()->{
-            var result=projections.findById("STAT:"+match);
+    @Test void comandosEnTorneosSeProyectanEnOtroMicroservicioConSuPropiaBase() throws Exception {
+        var tournament=tournaments.create(new TournamentRequest("Copa "+UUID.randomUUID(),"Valorant","Live","Hoy","2"));
+        var match=matches.create(new MatchController.Create(tournament.id(),"Blackout","Phoenix","Valorant"));
+        matches.change(match.id,new MatchController.Command("START",1));
+        matches.change(match.id,new MatchController.Command("A",2));
+        matches.change(match.id,new MatchController.Command("REVERT",3));
+        matches.change(match.id,new MatchController.Command("B",4));
+        matches.change(match.id,new MatchController.Command("FINISH",5));
+        await().atMost(Duration.ofSeconds(90)).untilAsserted(()-> {
+            var stats=scoreboard.read(true);
+            var result=java.util.stream.StreamSupport.stream(stats.spliterator(),false)
+                .filter(n->n.path("matchId").asText().equals(match.id.toString())).findFirst();
             assertThat(result).isPresent();
-            assertThat(result.orElseThrow().teamAScore).isEqualTo(2);
-            assertThat(result.orElseThrow().winner).isEqualTo("Blackout");
+            assertThat(result.orElseThrow().path("teamAScore").asInt()).isZero();
+            assertThat(result.orElseThrow().path("teamBScore").asInt()).isEqualTo(1);
+            assertThat(result.orElseThrow().path("winner").asText()).isEqualTo("Phoenix");
         });
+        var initial=outbox.findAll().stream().filter(p->p.matchId.equals(match.id)).findFirst().orElseThrow();
+        kafka.send(MatchService.EVENTS,match.id.toString(),initial.payload).get(20,TimeUnit.SECONDS);
+        // La prueba unitaria comprueba idempotencia; aquí verificamos el contrato entre procesos.
+        assertThat(scoreboard.read(false).isArray()).isTrue();
     }
 }

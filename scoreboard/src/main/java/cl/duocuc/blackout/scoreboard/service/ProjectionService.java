@@ -1,11 +1,17 @@
-package cl.duocuc.blackout.tournaments.live;
+package cl.duocuc.blackout.scoreboard.service;
+
+import cl.duocuc.blackout.scoreboard.dto.*;
+import cl.duocuc.blackout.scoreboard.model.*;
+import cl.duocuc.blackout.scoreboard.repository.*;
+import cl.duocuc.blackout.scoreboard.service.*;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ProjectionService {
     private final ProjectionRepository projections;
-    private final MatchService events;
-    public ProjectionService(ProjectionRepository projections,MatchService events) {
+    private final EventOutbox events;
+    public ProjectionService(ProjectionRepository projections,EventOutbox events) {
         this.projections=projections; this.events=events;
     }
     @Transactional
@@ -20,6 +26,6 @@ public class ProjectionService {
         p.rounds=String.join(",",event.rounds());
         p.winner="FINISHED".equals(event.status()) ? (p.teamAScore>p.teamBScore ? p.teamA : p.teamB) : null;
         projections.saveAndFlush(p);
-        if("SCORE".equals(kind)) events.enqueue(event,MatchService.SCORES);
+        if("SCORE".equals(kind)) events.enqueue(event,MatchTopics.SCORES);
     }
 }

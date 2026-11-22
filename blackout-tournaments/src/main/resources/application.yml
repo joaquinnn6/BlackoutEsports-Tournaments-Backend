@@ -28,11 +28,14 @@ spring:
       ddl-auto: update
     open-in-view: false
   rabbitmq:
+    addresses: ${RABBITMQ_ADDRESSES:${RABBITMQ_HOST:localhost}:${RABBITMQ_PORT:5672}}
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:blackout}
     password: ${RABBITMQ_PASSWORD:blackout-local}
 app:
+  scoreboard:
+    url: ${SCOREBOARD_URL:http://localhost:8087}
   kafka:
     enabled: ${KAFKA_ENABLED:false}
   cors:

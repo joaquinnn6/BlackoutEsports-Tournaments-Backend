@@ -1,4 +1,10 @@
-package cl.duocuc.blackout.tournaments.live;
+package cl.duocuc.blackout.scoreboard.model;
+
+import cl.duocuc.blackout.scoreboard.dto.*;
+import cl.duocuc.blackout.scoreboard.model.*;
+import cl.duocuc.blackout.scoreboard.repository.*;
+import cl.duocuc.blackout.scoreboard.service.*;
+
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;

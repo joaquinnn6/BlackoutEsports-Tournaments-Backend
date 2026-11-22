@@ -11,15 +11,15 @@ import org.springframework.web.bind.annotation.*;
 public class MatchController {
     private final MatchService service;
     private final MatchRepository matches;
-    private final ProjectionRepository projections;
-    public MatchController(MatchService service, MatchRepository matches, ProjectionRepository projections) {
+    private final ScoreboardClient projections;
+    public MatchController(MatchService service, MatchRepository matches, ScoreboardClient projections) {
         this.service=service; this.matches=matches; this.projections=projections;
     }
     public record Create(@Positive long tournamentId,@NotBlank @Size(max=100) String teamA,
         @NotBlank @Size(max=100) String teamB,@NotBlank @Size(max=100) String game) {}
     public record Command(@NotBlank String action,@Positive long expectedVersion) {}
-    @GetMapping public List<Projection> scores() { return projections.findByKind("SCORE"); }
-    @GetMapping("/statistics") public List<Projection> statistics() { return projections.findByKind("STAT"); }
+    @GetMapping public com.fasterxml.jackson.databind.JsonNode scores() { return projections.read(false); }
+    @GetMapping("/statistics") public com.fasterxml.jackson.databind.JsonNode statistics() { return projections.read(true); }
     @GetMapping("/manage") public List<Match> manage() { return matches.findAll(); }
     @PostMapping @ResponseStatus(HttpStatus.CREATED)
     public Match create(@Valid @RequestBody Create input) { return service.create(input); }

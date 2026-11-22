@@ -125,6 +125,43 @@ services:
     volumes:
       - kafka3-data:/var/lib/kafka/data
     networks: [blackout-network]
+  scoreboard-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: scoreboard_db
+      POSTGRES_USER: scoreboard
+      POSTGRES_PASSWORD: ${SCOREBOARD_DB_PASSWORD:?Define SCOREBOARD_DB_PASSWORD}
+    volumes: ["scoreboard-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scoreboard -d scoreboard_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    networks: [blackout-network]
+  scoreboard:
+    build: ./scoreboard
+    restart: unless-stopped
+    ports: ["127.0.0.1:8087:8087"]
+    environment:
+      DB_HOST: scoreboard-db
+      DB_PORT: 5432
+      DB_NAME: scoreboard_db
+      DB_USER: scoreboard
+      DB_PASSWORD: ${SCOREBOARD_DB_PASSWORD:?Define SCOREBOARD_DB_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9092,kafka3:9092
+      JAVA_TOOL_OPTIONS: -Xms64m -Xmx256m
+    depends_on:
+      scoreboard-db: {condition: service_healthy}
+      kafka1: {condition: service_healthy}
+      kafka2: {condition: service_healthy}
+      kafka3: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8087/api/matches"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks: [blackout-network]
   kafka-admin:
     build: ./kafka-admin
     restart: unless-stopped
@@ -147,6 +184,7 @@ networks:
   blackout-network:
     external: true
 volumes:
+  scoreboard-data:
   zk1-data:
   zk1-log:
   kafka1-data:
