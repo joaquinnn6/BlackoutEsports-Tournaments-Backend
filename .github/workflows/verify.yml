@@ -36,6 +36,8 @@ jobs:
         run: docker compose -f docker-compose.kafka.yml up -d --build --wait --wait-timeout 240 scoreboard
       - name: Probar flujo real entre ambos tópicos
         run: mvn -B -ntp -f blackout-tournaments/pom.xml -Dtest=KafkaClusterTests -Dkafka.integration=true test
+      - name: Probar administración real de tópicos y réplicas
+        run: mvn -B -ntp -f kafka-admin/pom.xml -Dtest=KafkaAdminIntegrationTests -Dkafka.integration=true test
       - name: Probar con un broker detenido
         run: |
           docker compose -f docker-compose.kafka.yml stop kafka3

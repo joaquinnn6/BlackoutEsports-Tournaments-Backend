@@ -27,6 +27,30 @@ class KafkaClusterTests {
     @Autowired OutboxRepository outbox;
     @Autowired ScoreboardClient scoreboard;
 
+    @Test void eventoInvalidoSeConservaEnDltConElOrigenDelFallo() throws Exception {
+        String invalid="{\"eventId\":\""+UUID.randomUUID()+"\",\"schemaVersion\":99}";
+        var properties=new Properties();
+        properties.put("bootstrap.servers","localhost:19091,localhost:19092,localhost:19093");
+        properties.put("group.id","check-dlt-"+UUID.randomUUID());
+        properties.put("auto.offset.reset","earliest");
+        properties.put("enable.auto.commit","false");
+        properties.put("key.deserializer","org.apache.kafka.common.serialization.StringDeserializer");
+        properties.put("value.deserializer","org.apache.kafka.common.serialization.StringDeserializer");
+        try(var consumer=new org.apache.kafka.clients.consumer.KafkaConsumer<String,String>(properties)) {
+            consumer.subscribe(List.of(MatchService.EVENTS+".DLT"));
+            kafka.send(MatchService.EVENTS,"invalid-"+UUID.randomUUID(),invalid).get(20,TimeUnit.SECONDS);
+            await().atMost(Duration.ofSeconds(60)).until(()-> {
+                for(var record:consumer.poll(Duration.ofMillis(500))) {
+                    if(invalid.equals(record.value())) {
+                        assertThat(record.headers().lastHeader(org.springframework.kafka.support.KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNotNull();
+                        return true;
+                    }
+                }
+                return false;
+            });
+        }
+    }
+
     @Test void comandosEnTorneosSeProyectanEnOtroMicroservicioConSuPropiaBase() throws Exception {
         var tournament=tournaments.create(new TournamentRequest("Copa "+UUID.randomUUID(),"Valorant","Live","Hoy","2"));
         var match=matches.create(new MatchController.Create(tournament.id(),"Blackout","Phoenix","Valorant"));
