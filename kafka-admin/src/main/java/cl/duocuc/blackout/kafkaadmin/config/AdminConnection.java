@@ -9,6 +9,9 @@ import org.springframework.context.annotation.*;
 public class AdminConnection {
     @Bean(destroyMethod="close")
     AdminClient adminClient(@Value("${spring.kafka.bootstrap-servers}") String servers) {
-        return AdminClient.create(Map.of("bootstrap.servers",servers,"default.api.timeout.ms",10000));
+        return AdminClient.create(Map.of(
+                "bootstrap.servers", servers,
+                "request.timeout.ms", 5000,
+                "default.api.timeout.ms", 10000));
     }
 }
